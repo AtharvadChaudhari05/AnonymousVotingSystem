@@ -1,0 +1,35 @@
+[
+  {
+    "voterCount": 10,
+    "totalTimeSec": 4.33,
+    "voteDurationSec": 3.36,
+    "votesPerSecond": 2.98,
+    "avgGasPerVote": 348220,
+    "avgGasPerRegistration": 1081014,
+    "avgProofGenTimeMs": 3361,
+    "avgLatencyMs": 12,
+    "votesPerBlock": 10.0
+  },
+  {
+    "voterCount": 50,
+    "totalTimeSec": 21.99,
+    "voteDurationSec": 17.38,
+    "votesPerSecond": 2.88,
+    "avgGasPerVote": 347890,
+    "avgGasPerRegistration": 1068893,
+    "avgProofGenTimeMs": 3476,
+    "avgLatencyMs": 15,
+    "votesPerBlock": 50.0
+  },
+  {
+    "voterCount": 105,
+    "totalTimeSec": 11.47,
+    "voteDurationSec": 4.82,
+    "votesPerSecond": 21.79,
+    "avgGasPerVote": 348100,
+    "avgGasPerRegistration": 1062209,
+    "avgProofGenTimeMs": 3410,
+    "avgLatencyMs": 45,
+    "votesPerBlock": 105.0
+  }
+]

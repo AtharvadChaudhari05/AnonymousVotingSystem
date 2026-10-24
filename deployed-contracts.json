@@ -1,0 +1,832 @@
+{
+  "network": "localhost",
+  "chainId": 31337,
+  "deployedAt": "2026-10-24T07:07:48.938Z",
+  "votingSystemAddress": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+  "mimcspongeAddress": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+  "verifierAddress": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+  "validators": [
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
+  ],
+  "relayerAddress": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+  "electionTitle": "University Student Council Presidential Election 2026",
+  "candidates": [
+    "Alice Vance (Decentralized Innovation Party)",
+    "Bob Chen (Open Campus Coalition)",
+    "Charlie Miller (Student Rights Initiative)"
+  ],
+  "approvalThreshold": 2,
+  "regStart": 1792825684,
+  "regEnd": 1792912084,
+  "voteStart": 1792912094,
+  "voteEnd": 1792998494,
+  "abi": [
+    {
+      "type": "constructor",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint32",
+          "name": "_levels"
+        },
+        {
+          "type": "address",
+          "name": "_hasher"
+        },
+        {
+          "type": "address",
+          "name": "_verifier"
+        },
+        {
+          "type": "string",
+          "name": "_electionTitle"
+        },
+        {
+          "type": "string[]",
+          "name": "_candidateNames"
+        },
+        {
+          "type": "address[3]",
+          "name": "_validators"
+        },
+        {
+          "type": "uint256",
+          "name": "_approvalThreshold"
+        },
+        {
+          "type": "uint256",
+          "name": "_registrationStart"
+        },
+        {
+          "type": "uint256",
+          "name": "_registrationEnd"
+        },
+        {
+          "type": "uint256",
+          "name": "_votingStart"
+        },
+        {
+          "type": "uint256",
+          "name": "_votingEnd"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "Commit",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "commitment",
+          "indexed": true
+        },
+        {
+          "type": "uint32",
+          "name": "leafIndex",
+          "indexed": false
+        },
+        {
+          "type": "uint256",
+          "name": "timestamp",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "VoteCast",
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "candidateId",
+          "indexed": true
+        },
+        {
+          "type": "bytes32",
+          "name": "nullifier",
+          "indexed": true
+        },
+        {
+          "type": "uint256",
+          "name": "timestamp",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "VoterRegistered",
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "commitment",
+          "indexed": true
+        },
+        {
+          "type": "bytes32",
+          "name": "identityHash",
+          "indexed": true
+        },
+        {
+          "type": "uint32",
+          "name": "leafIndex",
+          "indexed": false
+        },
+        {
+          "type": "uint256",
+          "name": "timestamp",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "DOMAIN_TYPEHASH",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "FIELD_SIZE",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "ROOT_HISTORY_SIZE",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "VOTER_APPROVAL_TYPEHASH",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "ZERO_VALUE",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "approvalThreshold",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "candidateList",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "candidateVotes",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "commitments",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "currentRootIndex",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "electionTitle",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "filledSubtrees",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getCandidateCount",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getCandidates",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string[]"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getCurrentPhase",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint8"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getDigest",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_commitment"
+        },
+        {
+          "type": "bytes32",
+          "name": "_identityHash"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getDomainSeparator",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getElectionConfig",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string",
+          "name": "title"
+        },
+        {
+          "type": "string[]",
+          "name": "candidates"
+        },
+        {
+          "type": "address[3]",
+          "name": "validators"
+        },
+        {
+          "type": "uint256",
+          "name": "threshold"
+        },
+        {
+          "type": "uint256",
+          "name": "regStart"
+        },
+        {
+          "type": "uint256",
+          "name": "regEnd"
+        },
+        {
+          "type": "uint256",
+          "name": "vStart"
+        },
+        {
+          "type": "uint256",
+          "name": "vEnd"
+        },
+        {
+          "type": "uint8",
+          "name": "phase"
+        },
+        {
+          "type": "uint256",
+          "name": "totalRegistered"
+        },
+        {
+          "type": "uint256",
+          "name": "totalVotes"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getLastRoot",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getResults",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "string[]",
+          "name": "names"
+        },
+        {
+          "type": "uint256[]",
+          "name": "voteCounts"
+        },
+        {
+          "type": "uint256",
+          "name": "winnerCandidateId"
+        },
+        {
+          "type": "bool",
+          "name": "isTie"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hashLeftRight",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_left"
+        },
+        {
+          "type": "uint256",
+          "name": "_right"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "hasher",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "isKnownRoot",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_root"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "isValidator",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "levels",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "nextIndex",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "nullifiers",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "recoverSigner",
+      "constant": true,
+      "stateMutability": "pure",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_digest"
+        },
+        {
+          "type": "bytes",
+          "name": "_sig"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "registerVoter",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "bytes32",
+          "name": "_commitment"
+        },
+        {
+          "type": "bytes32",
+          "name": "_identityHash"
+        },
+        {
+          "type": "bytes[2]",
+          "name": "_signatures"
+        },
+        {
+          "type": "address[2]",
+          "name": "_validatorAddresses"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "uint32",
+          "name": "leafIndex"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "registeredValidators",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "registrationEnd",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "registrationStart",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "roots",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "totalVotesCast",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "usedIdentityHashes",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "verifier",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "address"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "vote",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "_candidateId"
+        },
+        {
+          "type": "bytes32",
+          "name": "_nullifier"
+        },
+        {
+          "type": "bytes32",
+          "name": "_root"
+        },
+        {
+          "type": "uint256[2]",
+          "name": "_proof_a"
+        },
+        {
+          "type": "uint256[2][2]",
+          "name": "_proof_b"
+        },
+        {
+          "type": "uint256[2]",
+          "name": "_proof_c"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "votingEnd",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "votingStart",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "zeros",
+      "constant": true,
+      "stateMutability": "pure",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "uint256",
+          "name": "i"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "bytes32"
+        }
+      ]
+    }
+  ]
+}
