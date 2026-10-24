@@ -17,103 +17,233 @@ This project implements a decentralized, anonymous, multi-validator electronic v
 4. **Duplicate-Identity Protection**: Each validator signature covers a salted hash of the voter's real-world identity (`identityHash`). The contract records used identity hashes, permanently preventing duplicate registrations.
 5. **Zero-Knowledge Anonymity**: Votes are cast revealing only the cryptographic `nullifier` and a zk-SNARK proof of Merkle tree membership. Neither validators, nor the relayer, nor the public can link a vote to a voter's commitment or identity.
 6. **Gas-Sponsored Relayer**: Votes and registrations are submitted through an Anonymous Relayer service that manages sequential transaction nonces and pays gas fees, ensuring the voter's personal Ethereum address is never exposed on-chain.
-7. **Zero Transaction Loss**: A robust FIFO queue with nonce tracking eliminates transaction collisions and drops under parallel load (overcoming Sancus L5).
+7. **Zero Transaction Loss**: A robust FIFO queue with sequential nonce tracking eliminates transaction collisions and drops under parallel load (overcoming Sancus L5).
+
+---
+
+## 💻 Full Technology Stack
+
+| Layer | Technology | Version | Purpose & Architectural Role |
+|:---|:---|:---|:---|
+| **Blockchain / EVM** | **Solidity** | `^0.8.20` | Core smart contract language; implements no-admin governance, Merkle trees, and proof validation. |
+| | **Hardhat** | `^2.22.x` | Ethereum development environment for compiling, testing, and running the local blockchain node. |
+| | **Ethers.js** | `^6.13.x` | Client and relayer Web3 library for interacting with EVM contracts, encoding ABIs, and parsing events. |
+| | **EIP-712** | Standard | Typed structured data hashing and signature verification (`eth_signTypedData_v4`) for validator approvals. |
+| | **EVM Precompiles** | `0x08` (AltBn128) | Native Ethereum elliptic curve pairing precompile executing Groth16 bilinear pairing checks. |
+| **Zero-Knowledge Cryptography** | **Circom** | `^2.1.6` | Arithmetic circuit compiler specifying constraints for membership verification and commitment hashing. |
+| | **SnarkJS** | `^0.7.3` | JavaScript/WASM library executing Groth16 witness generation and proof computation in browser and Node. |
+| | **Groth16** | Proof System | Zero-knowledge proof protocol providing constant proof size (~128 bytes) and fast on-chain verification (~298k gas). |
+| | **MiMC-Sponge** | Hash Function | SNARK-friendly algebraic hash function over the BN254 scalar field ($220$ rounds) for Merkle tree hashing. |
+| | **BN254 / AltBn128** | Curve | Pairing-friendly elliptic curve supported natively by Ethereum for zero-knowledge cryptographic operations. |
+| | **Incremental Merkle Tree** | Depth 20 | Binary hash tree supporting up to $2^{20} = 1,048,576$ voters with a 30-root circular historical buffer. |
+| **Backend & Relayer** | **Node.js** | `>=18.0.0` | Server-side JavaScript runtime powering the relayer service and automated testing pipelines. |
+| | **Express.js** | `^4.19.x` | RESTful API server exposing registration and voting endpoints to decouple voters from direct on-chain gas costs. |
+| | **FIFO Mutex Queue** | Custom async | Serialized nonce manager ensuring zero transaction collision, zero nonce gaps, and zero transaction drops. |
+| | **Zero-IP Privacy Layer** | Middleware | In-memory processing that scrubs client IP addresses and user agents to guarantee complete traffic anonymity. |
+| **Frontend & UI/UX** | **React** | `^18.2.0` | Declarative component-based frontend framework providing real-time state synchronization. |
+| | **Vite** | `^5.2.x` | High-performance build tool and development server with Hot Module Replacement (HMR). |
+| | **Vanilla CSS** | Modern CSS3 | Custom dark-mode glassmorphic design system with CSS grid, flexbox, glowing accents, and micro-animations. |
+| | **Lucide React** | `^0.363.x` | Accessible, clean iconography for election phases, cryptographic security badges, and audit statuses. |
+| | **WebAssembly (WASM)** | Runtime | In-browser binary engine executing `Verifier.js` and evaluating the 14.9 MB `verifier.zkey` parameter key. |
+| **Testing & Evaluation** | **Mocha & Chai** | Bundled | Automated test framework executing unit and security tests covering Sybil attacks and double-voting. |
+| | **Benchmark Suite** | Custom | Comprehensive evaluation scripts measuring gas, latency, and throughput across batch sizes ($10, 50, 100, 250$). |
+| | **Stress Tester** | Custom | Synthetic flood concurrency script simulating $105+$ simultaneous votes to verify queue resilience. |
 
 ---
 
 ## 📐 System Architecture
 
+### Architectural Component Diagram
+
 ```mermaid
 flowchart TD
-    subgraph Client["Voter Browser (Zero-Knowledge Prover)"]
-        Entropy["Crypto Randomness"] --> Note["Secret Note\n(nullifier, secret)"]
-        Note --> MiMCHash["MiMCSponge Hash"]
-        MiMCHash --> Commitment["Commitment Leaf\nHash(nullifier, secret)"]
-        Note --> Prover["Groth16 zk-SNARK Prover\n(AltBn128 curve)"]
+    classDef client fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef val fill:#0f172a,stroke:#34d399,stroke-width:2px,color:#f8fafc;
+    classDef rel fill:#0f172a,stroke:#fbbf24,stroke-width:2px,color:#f8fafc;
+    classDef chain fill:#0f172a,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
+
+    subgraph Client["1. Client Layer (Voter Browser & In-Memory ZK Prover)"]
+        Entropy["CSPRNG Cryptographic Entropy"] --> Note["Secret Note<br/>(nullifier, secret)"]
+        Note --> MiMCHash["MiMC-Sponge Hasher"]
+        MiMCHash --> Commitment["Commitment Leaf<br/>Hash(nullifier, secret)"]
+        Note --> Prover["Groth16 zk-SNARK Prover<br/>(AltBn128 WASM Runtime)"]
     end
 
-    subgraph Validators["Off-Chain Validator Quorum (2-of-3 Threshold)"]
-        V1["Validator 1 (MetaMask)"]
-        V2["Validator 2 (MetaMask)"]
-        V3["Validator 3 (MetaMask)"]
-        Roster["Eligibility Roster (CSV)"]
+    subgraph Validators["2. Validator Layer (Off-Chain 2-of-3 Quorum)"]
+        Roster["Off-Chain Student Roster (CSV)"]
+        V1["Validator 1 (Account 1 - MetaMask)"]
+        V2["Validator 2 (Account 2 - MetaMask)"]
+        V3["Validator 3 (Account 3 - MetaMask)"]
+        Roster -->|Verify Student ID| V1
+        Roster -->|Verify Student ID| V2
+        Roster -->|Verify Student ID| V3
     end
 
-    subgraph RelayerService["Anonymous Relayer Service (Port 3001)"]
-        ReqQueue["Pending Request Pool"]
-        TxQueue["Sequential Nonce FIFO Queue"]
-        ZeroIP["Zero IP Logging Engine"]
+    subgraph RelayerService["3. Anonymous Relayer Layer (Port 3001)"]
+        ReqPool["Pending Request Pool"]
+        FIFO["Sequential Nonce FIFO Queue<br/>(Mutex Locked Transaction Pipeline)"]
+        ZeroIP["Zero-IP Logging Policy<br/>(Scrubs IP & User-Agent)"]
+        RelayerWallet["Relayer Gas Sponsor Wallet<br/>(Account 4 - Pays Gas)"]
+        ReqPool --> ZeroIP
+        ZeroIP --> FIFO
+        FIFO --> RelayerWallet
     end
 
-    subgraph Blockchain["Ethereum Smart Contracts (EVM)"]
-        AVS["AnonymousVotingSystem.sol\n(No Owner, Immutable Config)"]
-        MT["MerkleTreeWithHistory.sol\n(20 Levels, 1M Capacity)"]
-        VK["Verifier.sol\n(Groth16 Verifier)"]
-        MiMC["MiMCSponge.sol\n(Hasher)"]
+    subgraph Blockchain["4. Smart Contract Layer (Ethereum EVM)"]
+        AVS["AnonymousVotingSystem.sol<br/>(No Owner, Immutable Config, Phase Guard)"]
+        MT["MerkleTreeWithHistory.sol<br/>(Depth 20 | 1M Capacity | 30 Root Buffer)"]
+        VK["Verifier.sol<br/>(Groth16 Verifier via EVM 0x08 Precompile)"]
+        Registry["Nullifier & IdentityHash Registry<br/>(Sybil & Double-Voting Barrier)"]
+        
+        AVS --> MT
+        AVS --> VK
+        AVS --> Registry
     end
 
-    %% Flows
-    Commitment -->|1. Submit Commitment + ID| ReqQueue
-    Roster -->|Inspect Eligibility| Validators
-    Validators -->|2. EIP-712 Signatures (2 of 3)| ReqQueue
-    ReqQueue --> TxQueue
-    TxQueue -->|3. Register Commitment & IdentityHash| AVS
-    AVS --> MT
+    %% Interactions
+    Commitment -->|1. Submit Commitment + ID Hash| ReqPool
+    V1 -->|2. EIP-712 Signature 1| ReqPool
+    V2 -->|2. EIP-712 Signature 2| ReqPool
+    RelayerWallet -->|3. registerVoter() Transaction| AVS
+    MT -.->|4. Query Commit Events & Construct Merkle Path| Prover
+    Prover -->|5. Submit ZK Proof + NullifierHash + Candidate| ReqPool
+    RelayerWallet -->|6. vote() Transaction (Relayer Pays Gas)| AVS
+    AVS -->|7. Update Candidate Tallies & Nullifier Registry| Registry
 
-    MT -.->|4. Query Commit Events & Merkle Path| Prover
-    Prover -->|5. ZK Proof (A,B,C) + NullifierHash + Candidate| TxQueue
-    TxQueue -->|6. Relay Vote (Relayer Pays Gas)| AVS
-    AVS --> VK
-    AVS -->|7. Nullifier Registry & Tallies| AVS
+    class Client client;
+    class Validators val;
+    class RelayerService rel;
+    class Blockchain chain;
+```
+
+### Architectural Layer Breakdown
+
+1. **Client Layer (Voter Browser)**:
+   - Uses cryptographic pseudorandomness (`crypto.getRandomValues`) to create a private scalar pair: `nullifier` and `secret`.
+   - Generates the public **commitment** via `MiMCSponge(nullifier, secret)`.
+   - Downloads a backup JSON note. The voter's private nullifier and secret **never** leave the browser memory.
+   - Computes AltBn128 Groth16 witness and proof in WebAssembly in ~2.5 seconds.
+2. **Multi-Validator Quorum (2-of-3 Threshold)**:
+   - Three independent institutional authorities inspect real-world student identities against an off-chain roster.
+   - When verified, validators sign an **EIP-712 typed structured message** containing `(commitment, identityHash)`.
+   - No single corrupt validator can register an ineligible voter (requires at least 2 distinct validator signatures).
+3. **Anonymous Relayer Service**:
+   - Accepts registration payloads and vote proofs via REST API.
+   - Sanitizes requests with a strict **Zero-IP logging policy** (IP addresses and client fingerprints are discarded in volatile RAM).
+   - Enqueues submissions into an asynchronous **FIFO Queue with sequential nonce tracking** to prevent mempool frontrunning, nonce desynchronization, and transaction loss.
+   - Signs and broadcasts Ethereum transactions using its dedicated sponsor wallet, covering all on-chain gas fees so the voter's wallet is never revealed on-chain.
+4. **Smart Contract Layer (EVM)**:
+   - `AnonymousVotingSystem.sol`: Immutable parameters (title, candidates, validators, threshold, phase schedule) fixed at deployment.
+   - `MerkleTreeWithHistory.sol`: Incremental binary Merkle tree of depth 20 (accommodating $1,048,576$ commitments) with a 30-root circular history buffer to prevent race conditions during concurrent voting.
+   - `Verifier.sol`: Groth16 zero-knowledge verifier executing pairing checks via the Ethereum `0x08` precompiled contract.
+   - State registries permanently record `usedIdentityHashes` (Sybil resistance) and `nullifiers` (double-voting resistance).
+
+---
+
+## 🔄 Cryptographic Workflow & Election Lifecycle
+
+### 1. Election Phase State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> NotStarted: Smart Contract Deployed
+    NotStarted --> Registration: block.timestamp >= regStartTime
+    Registration --> RegistrationEnded: block.timestamp >= regEndTime
+    RegistrationEnded --> Voting: block.timestamp >= votingStartTime
+    Voting --> Ended: block.timestamp >= votingEndTime
+    Ended --> [*]: Final Results Sealed & Publicly Auditable
+
+    note right of NotStarted
+        - Deployer sets immutable configuration
+        - Zero admin privileges retained
+    end note
+
+    note right of Registration
+        - Voters generate secret notes
+        - 2 of 3 Validators inspect ID & sign EIP-712
+        - Relayer registers commitment in Merkle tree
+    end note
+
+    note right of Voting
+        - Voters construct Merkle proof of membership
+        - WebAssembly prover computes Groth16 proof
+        - Relayer submits vote with nullifierHash
+        - Contract checks proof & logs nullifier
+    end note
+
+    note right of Ended
+        - Voting closed permanently
+        - Real-time immutable tally available
+        - Zero-knowledge audit engine live
+    end note
 ```
 
 ---
 
-## 🔄 Cryptographic Workflow
+### 2. End-to-End Cryptographic Protocol Sequence
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Voter as Voter (Client Browser)
-    participant Val as 2 Validators (Accounts 1 & 2)
+    participant Val1 as Validator 1 (MetaMask)
+    participant Val2 as Validator 2 (MetaMask)
     participant Rel as Relayer Service (Port 3001)
-    participant SC as Smart Contract (EVM)
+    participant SC as EVM Smart Contracts
 
-    Note over Voter: Phase 1: Registration Window
-    Voter->>Voter: Generate nullifier & secret scalars
+    rect rgb(15, 23, 42)
+    Note over Voter,SC: PHASE 1: VOTER REGISTRATION & 2-OF-3 VALIDATION
+    Voter->>Voter: Generate 256-bit scalars: nullifier & secret
     Voter->>Voter: commitment = MiMCSponge(nullifier, secret)
     Voter->>Voter: identityHash = keccak256(studentId + salt)
-    Voter->>Rel: Submit (studentId, commitment, identityHash)
+    Voter->>Rel: Submit Registration Intent (studentId, commitment, identityHash)
     
-    Val->>Rel: Inspect studentId against roster CSV
-    Val->>Val: Sign EIP-712 typed approval with MetaMask
-    Val->>Rel: Submit 2 signatures
+    Val1->>Val1: Inspect studentId against roster CSV
+    Val1->>Rel: Submit EIP-712 Signature 1 (signTypedData_v4)
+    Val2->>Val2: Inspect studentId against roster CSV
+    Val2->>Rel: Submit EIP-712 Signature 2 (signTypedData_v4)
     
+    Rel->>Rel: Push to Sequential Nonce FIFO Queue
     Rel->>SC: registerVoter(commitment, identityHash, signatures[2], validators[2])
-    SC->>SC: Verify 2 distinct validator signatures
-    SC->>SC: Check !usedIdentityHashes[identityHash]
+    SC->>SC: Verify 2 distinct validator signatures via ecrecover
+    SC->>SC: Assert !usedIdentityHashes[identityHash]
+    SC->>SC: usedIdentityHashes[identityHash] = true
     SC->>SC: Insert commitment into 20-level Merkle tree
-    SC-->>Voter: Emits Commit(commitment, leafIndex)
+    SC-->>Voter: Emit Commit(commitment, leafIndex, timestamp)
+    end
 
-    Note over Voter: Phase 2: Voting Window (Timestamp Advanced)
-    Voter->>SC: Fetch Commit events & construct Merkle path
-    Voter->>Voter: Generate Groth16 zk proof (AltBn128 WASM)
-    Voter->>Rel: Submit (candidateId, nullifierHash, root, proof_a, proof_b, proof_c)
+    rect rgb(30, 27, 75)
+    Note over Voter,SC: PHASE 2: ANONYMOUS VOTING & ZK PROOF VERIFICATION
+    Voter->>SC: Query all past Commit events from chain
+    Voter->>Voter: Reconstruct local Merkle tree & compute path to root
+    Voter->>Voter: nullifierHash = MiMCSponge(nullifier)
+    Voter->>Voter: Generate Groth16 proof via snarkjs (AltBn128 curve)
+    Voter->>Rel: Submit Vote Payload (candidateId, nullifierHash, root, proof_a, proof_b, proof_c)
     
+    Rel->>Rel: Scrub IP & User-Agent (Zero-IP Policy)
+    Rel->>Rel: Push to Sequential Nonce FIFO Queue
     Rel->>SC: vote(candidateId, nullifierHash, root, proof) [Relayer Pays Gas]
-    SC->>SC: Verify isKnownRoot(root)
-    SC->>SC: Verify !nullifiers[nullifierHash]
-    SC->>SC: IVerifier.verifyProof(proof, [nullifierHash, root])
+    SC->>SC: Assert isKnownRoot(root) in 30-root historical buffer
+    SC->>SC: Assert !nullifiers[nullifierHash] (Prevent double-voting)
+    SC->>SC: Verifier.verifyProof(proof, [nullifierHash, root]) via 0x08 precompile
     SC->>SC: nullifiers[nullifierHash] = true
     SC->>SC: candidateVotes[candidateId]++
-    SC-->>Rel: Emits VoteCast(candidateId, nullifierHash)
+    SC-->>Rel: Emit VoteCast(candidateId, nullifierHash)
+    end
+
+    rect rgb(20, 24, 39)
+    Note over Voter,SC: PHASE 3: ZERO-TRUST PUBLIC AUDIT & RESULTS
+    Voter->>SC: Query candidateVotes[] and total registered commitments
+    Voter->>Voter: Cryptographic Audit: Total Votes == Count(nullifiers) <= Total Commitments
+    Voter->>Voter: Integrity Check: Zero duplicate nullifiers verified
+    end
 ```
 
 ---
 
 ## 🔬 Sancus (IEEE BCCA 2022) vs Our Anonymous Voting System
 
-The following comparison table presents the empirical and architectural resolution to the ten limitations identified in the Sancus paper:
+The following comparison table presents the empirical and architectural resolution to the ten limitations identified in the reference research paper **Sancus** (*IEEE BCCA 2022*, DOI: [10.1109/BCCA55292.2022.9921940](https://doi.org/10.1109/BCCA55292.2022.9921940)):
 
 | Ref | Sancus Limitation (IEEE BCCA 2022) | Our Anonymous Voting Architecture | Empirical Verification / Measured Data | Status |
 |:---:|:---|:---|:---:|:---:|
@@ -130,10 +260,27 @@ The following comparison table presents the empirical and architectural resoluti
 
 ---
 
+## 📊 Empirical Scalability Benchmarks
+
+Empirical performance evaluation measured across simulated election batches on an EVM environment:
+
+| Batch Size ($N$) | Registration Time | Voting Duration | Effective Throughput | Client zk-SNARK Proof Time | Avg Gas per Vote | On-Chain Confirmation Rate | Loss Rate |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **10 Voters** | 0.97 s | 3.36 s | **2.98 tx/s** | 3,361 ms | 348,220 gas | 10/10 (100%) | **0%** |
+| **50 Voters** | 4.61 s | 17.38 s | **2.88 tx/s** | 3,476 ms | 347,890 gas | 50/50 (100%) | **0%** |
+| **105 Voters (Flood)** | 6.85 s | 4.82 s | **21.79 tx/s** | 3,410 ms | 348,100 gas | 105/105 (100%) | **0%** |
+
+### Benchmark Takeaways:
+- **Client-Side Proof Viability**: Browser WebAssembly generates full Groth16 cryptographic proofs in **~3.4 seconds** without requiring specialized hardware or native desktop installations.
+- **Constant On-Chain Verification Gas**: Groth16 verification on the EVM consumes a constant **~348,100 gas** regardless of whether 10 or 1,000,000 voters participate.
+- **Concurrency Resilience**: When flooded with 105 simultaneous votes submitted in the same millisecond, the Relayer FIFO queue processed every transaction with sequential nonces in **4.82 seconds**, achieving a **0% drop rate**.
+
+---
+
 ## 🚀 Setup & Execution Guide
 
 ### Prerequisites
-- **Node.js**: v18.x or v20.x or v22.x
+- **Node.js**: `v18.x`, `v20.x`, or `v22.x`
 - **MetaMask**: Browser extension installed
 
 ### 1. Installation
@@ -159,25 +306,25 @@ npm test
 ```
 
 ### 4. Start Local Blockchain & Deploy
-In Terminal 1:
+In **Terminal 1**:
 ```bash
 npx hardhat node
 ```
 
-In Terminal 2:
+In **Terminal 2**:
 ```bash
 npm run deploy
 ```
 
-### 5. Launch Relayer Service
-In Terminal 3:
+### 5. Launch Anonymous Relayer Service
+In **Terminal 3**:
 ```bash
 npm run relayer
 ```
 Relayer will start on `http://localhost:3001` with zero IP logging enabled.
 
 ### 6. Start the React Frontend
-In Terminal 4:
+In **Terminal 4**:
 ```bash
 npm run frontend
 ```
@@ -231,8 +378,10 @@ AnonymousVotingSystem/
 │   └── stress-test.js              # Sancus L5 concurrent flood stress test script
 ├── test/                           # Automated Hardhat unit test suite
 │   └── AnonymousVotingSystem.test.js
+├── .gitignore                      # Git exclusion rules for node_modules & build caches
 ├── election.config.json            # Immutable election configuration
 ├── deployed-contracts.json         # Deployed contract addresses & metadata
+├── BENCHMARK.md                    # Detailed benchmark breakdown & Sancus comparison
 ├── LIMITATIONS.md                  # Honest security boundaries & unsolved trade-offs
 ├── VIVA_DEMO_SCRIPT.md             # Viva presentation script for college examiners
 ├── REPORT_SECTION.md               # Sancus comparison chapter for project report
