@@ -1,10 +1,10 @@
 {
   "network": "localhost",
   "chainId": 31337,
-  "deployedAt": "2026-10-24T07:07:48.938Z",
-  "votingSystemAddress": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
-  "mimcspongeAddress": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
-  "verifierAddress": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+  "deployedAt": "2026-10-25T18:56:20.096Z",
+  "votingSystemAddress": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+  "mimcspongeAddress": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "verifierAddress": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
   "validators": [
     "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
     "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
@@ -18,10 +18,10 @@
     "Charlie Miller (Student Rights Initiative)"
   ],
   "approvalThreshold": 2,
-  "regStart": 1792825684,
-  "regEnd": 1792912084,
-  "voteStart": 1792912094,
-  "voteEnd": 1792998494,
+  "regStart": 1792954575,
+  "regEnd": 1792955475,
+  "voteStart": 1792955485,
+  "voteEnd": 1792956385,
   "abi": [
     {
       "type": "constructor",

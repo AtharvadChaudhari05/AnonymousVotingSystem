@@ -54,9 +54,9 @@ async function main() {
   // 3. Compute Phase Timestamps
   const currentBlock = await ethers.provider.getBlock("latest");
   const nowTs = currentBlock.timestamp;
-  const regDuration = config.timing.registrationDurationSeconds || 600;
+  const regDuration = config.timing.registrationDurationSeconds || 900;
   const pauseDuration = config.timing.pauseBetweenRegistrationAndVotingSeconds || 10;
-  const voteDuration = config.timing.votingDurationSeconds || 1200;
+  const voteDuration = config.timing.votingDurationSeconds || 900;
 
   const regStart = nowTs; // starts immediately
   const regEnd = regStart + regDuration;

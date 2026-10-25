@@ -16,7 +16,23 @@ export default function App() {
   const [deployment, setDeployment] = useState(initialDeployment);
   const [activeTab, setActiveTab] = useState("voter");
   const [currentPhaseNum, setCurrentPhaseNum] = useState(1);
-  const [electionConfig, setElectionConfig] = useState(null);
+  const [electionConfig, setElectionConfig] = useState(
+    initialDeployment
+      ? {
+          title: initialDeployment.electionTitle,
+          candidates: initialDeployment.candidates,
+          validators: initialDeployment.validators || [],
+          threshold: initialDeployment.approvalThreshold || 2,
+          regStart: initialDeployment.regStart,
+          regEnd: initialDeployment.regEnd,
+          voteStart: initialDeployment.voteStart,
+          voteEnd: initialDeployment.voteEnd,
+          phase: 1,
+          totalRegistered: 0,
+          totalVotes: 0,
+        }
+      : null
+  );
   const [networkError, setNetworkError] = useState(null);
 
   // Initialize Provider & Contract
@@ -55,10 +71,11 @@ export default function App() {
         }
 
         if (dep && dep.votingSystemAddress && dep.abi) {
+          // Use provider for read-only contract queries so it never throws on unapproved signers
           const contract = new ethers.Contract(
             dep.votingSystemAddress,
             dep.abi,
-            web3Provider.getSigner ? web3Provider.getSigner() : web3Provider
+            web3Provider
           );
           setVotingContract(contract);
 

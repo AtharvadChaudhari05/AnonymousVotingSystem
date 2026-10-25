@@ -503,12 +503,57 @@ app.get("/api/metrics", (req, res) => {
 });
 
 // 7. Fast-Forward Phase for Testing & Viva Demonstrations
+async function resetElectionHandler(req, res) {
+  try {
+    console.log("[Relayer] Starting fresh election deployment...");
+    const { exec } = require("child_process");
+    await new Promise((resolve, reject) => {
+      exec(
+        "npx hardhat run --network localhost scripts/deploy.js",
+        { cwd: path.join(__dirname, "..") },
+        (error, stdout, stderr) => {
+          if (error) {
+            console.error("[Relayer] Deploy exec error:", stderr || error.message);
+            return reject(error);
+          }
+          console.log("[Relayer] Fresh deploy stdout:", stdout);
+          resolve(stdout);
+        }
+      );
+    });
+
+    // Reset relayer state
+    pendingRequests = [];
+    txQueue.queue = [];
+    txQueue.isProcessing = false;
+    txQueue.currentNonce = null;
+    await initRelayer();
+
+    res.json({
+      success: true,
+      newElection: true,
+      message: "Brand new election successfully deployed!",
+      contractAddress: votingContract.address,
+    });
+  } catch (e) {
+    console.error("[Relayer] Reset election error:", e);
+    res.status(500).json({ error: "Failed to reset election: " + e.message });
+  }
+}
+
+app.post("/api/reset-election", resetElectionHandler);
+
 app.post("/api/advance-phase", async (req, res) => {
   try {
     if (!votingContract) await initRelayer();
     const currentBlock = await provider.getBlock("latest");
     const currentTs = currentBlock.timestamp;
     const currentPhase = await votingContract.getCurrentPhase();
+
+    if (currentPhase === 4) {
+      // If election has ended, advance-phase cycles directly into a brand new election!
+      return await resetElectionHandler(req, res);
+    }
 
     let targetTime = currentTs + 10;
     if (currentPhase === 0) {
@@ -541,6 +586,15 @@ app.listen(PORT, async () => {
   console.log(`  Transaction Queue: Nonce-managed FIFO active  `);
   console.log(`=================================================`);
   await initRelayer();
+
+  // Heartbeat: mine a block every 5 seconds so block.timestamp progresses automatically in real time
+  setInterval(async () => {
+    try {
+      if (provider) {
+        await provider.send("evm_mine", []);
+      }
+    } catch (e) {}
+  }, 5000);
 });
 
 module.exports = app;

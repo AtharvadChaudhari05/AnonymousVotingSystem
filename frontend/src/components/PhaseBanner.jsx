@@ -72,21 +72,47 @@ export default function PhaseBanner({ electionConfig, currentPhaseNum }) {
         </div>
         <button
           className="btn btn-secondary btn-sm"
-          style={{ fontSize: "12px", padding: "6px 12px", background: "rgba(99, 102, 241, 0.2)", borderColor: "var(--accent-primary)" }}
-          title="Advances local EVM blockchain time to next election phase for live demonstration"
-          onClick={async () => {
+          style={{
+            fontSize: "12px",
+            padding: "6px 14px",
+            background: currentPhaseNum === 4 ? "#10b981" : "rgba(99, 102, 241, 0.2)",
+            borderColor: currentPhaseNum === 4 ? "#10b981" : "var(--accent-primary)",
+            color: currentPhaseNum === 4 ? "#ffffff" : "inherit",
+            fontWeight: currentPhaseNum === 4 ? "600" : "normal",
+          }}
+          title={
+            currentPhaseNum === 4
+              ? "Election has concluded! Click to deploy a brand new election and start fresh registration."
+              : "Advances local EVM blockchain time to next election phase for live demonstration"
+          }
+          onClick={async (e) => {
+            const originalText = e.target.innerText;
             try {
-              const res = await fetch("http://localhost:3001/api/advance-phase", { method: "POST" });
+              e.target.innerText = currentPhaseNum === 4 ? "🔄 Starting New Election..." : "⏩ Advancing Phase...";
+              e.target.disabled = true;
+
+              const endpoint =
+                currentPhaseNum === 4
+                  ? "http://localhost:3001/api/reset-election"
+                  : "http://localhost:3001/api/advance-phase";
+
+              const res = await fetch(endpoint, { method: "POST" });
               const data = await res.json();
               if (data.success) {
                 window.location.reload();
+              } else {
+                alert("Could not transition phase: " + (data.error || "Unknown error"));
+                e.target.innerText = originalText;
+                e.target.disabled = false;
               }
-            } catch (e) {
-              alert("Failed to advance phase: " + e.message);
+            } catch (err) {
+              alert("Failed: " + err.message);
+              e.target.innerText = originalText;
+              e.target.disabled = false;
             }
           }}
         >
-          ⏩ Next Phase (Demo)
+          {currentPhaseNum === 4 ? "🔄 Start New Election (Reset)" : "⏩ Next Phase (Demo)"}
         </button>
       </div>
     </div>
