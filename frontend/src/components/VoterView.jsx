@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
 import {
   generateCommitment,
@@ -24,6 +24,11 @@ export default function VoterView({
 
   // Voting state
   const [noteJsonInput, setNoteJsonInput] = useState("");
+  const [parsedNote, setParsedNote] = useState(null);
+  const [loadedFileInfo, setLoadedFileInfo] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [isGeneratingProof, setIsGeneratingProof] = useState(false);
   const [proofProgress, setProofProgress] = useState("");
@@ -34,10 +39,17 @@ export default function VoterView({
 
   // Auto-fill note JSON if generated in same session
   useEffect(() => {
-    if (generatedNote && !noteJsonInput) {
+    if (generatedNote && !parsedNote) {
+      setParsedNote(generatedNote);
       setNoteJsonInput(JSON.stringify(generatedNote, null, 2));
+      setLoadedFileInfo({
+        name: `voting_secret_note_${generatedNote.voterRollNumber || "session"}.json (Auto-loaded from Step 1)`,
+        voterRollNumber: generatedNote.voterRollNumber || "Auto-detected",
+        commitmentShort: generatedNote.commitment ? generatedNote.commitment.slice(0, 16) + "..." : "",
+        isAutoLoaded: true,
+      });
     }
-  }, [generatedNote]);
+  }, [generatedNote, parsedNote]);
 
   // Step 1 & 2: Generate Secret Note & Request 2-of-3 Validator Approvals
   const handleGenerateAndRegister = async () => {
@@ -144,6 +156,61 @@ export default function VoterView({
     }
   };
 
+  // File upload handlers for Secret Note JSON
+  const processNoteFile = (file) => {
+    if (!file) return;
+    setErrorMsg(null);
+    if (!file.name.toLowerCase().endsWith(".json")) {
+      setErrorMsg("Please upload a .json file (e.g. voting_secret_note_....json).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target.result;
+        const parsed = JSON.parse(content);
+        if (!parsed.nullifier || !parsed.secret || !parsed.commitment) {
+          setErrorMsg("Selected file is missing required cryptographic keys (nullifier, secret, commitment).");
+          setLoadedFileInfo(null);
+          setParsedNote(null);
+          return;
+        }
+        setParsedNote(parsed);
+        setNoteJsonInput(content);
+        setLoadedFileInfo({
+          name: file.name,
+          size: file.size,
+          voterRollNumber: parsed.voterRollNumber || "Extracted from Note",
+          commitmentShort: parsed.commitment ? parsed.commitment.slice(0, 16) + "..." : "",
+          isAutoLoaded: false,
+        });
+      } catch (err) {
+        setErrorMsg("Failed to read JSON: " + err.message);
+        setLoadedFileInfo(null);
+        setParsedNote(null);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processNoteFile(e.dataTransfer.files[0]);
+    }
+  };
+
   // Step 3: Cast Anonymous Vote
   const handleCastVote = async () => {
     try {
@@ -154,21 +221,16 @@ export default function VoterView({
         setErrorMsg("Please select a candidate to vote for.");
         return;
       }
-      if (!noteJsonInput.trim()) {
-        setErrorMsg("Please paste or upload your Secret Note JSON.");
-        return;
+
+      let noteToUse = parsedNote;
+      if (!noteToUse && noteJsonInput.trim()) {
+        try {
+          noteToUse = JSON.parse(noteJsonInput);
+        } catch (e) {}
       }
 
-      let parsedNote = null;
-      try {
-        parsedNote = JSON.parse(noteJsonInput);
-      } catch (e) {
-        setErrorMsg("Invalid JSON in Secret Note. Please check formatting.");
-        return;
-      }
-
-      if (!parsedNote.nullifier || !parsedNote.secret || !parsedNote.commitment) {
-        setErrorMsg("Secret note missing required cryptographic fields (nullifier, secret, commitment).");
+      if (!noteToUse || !noteToUse.nullifier || !noteToUse.secret || !noteToUse.commitment) {
+        setErrorMsg("Please upload your Secret Note JSON file before casting your vote.");
         return;
       }
 
@@ -179,7 +241,7 @@ export default function VoterView({
       const proofPayload = await generateZKProofBrowser(
         votingContract,
         TREE_LEVELS,
-        parsedNote,
+        noteToUse,
         (msg) => setProofProgress(msg)
       );
 
@@ -421,15 +483,61 @@ export default function VoterView({
           </div>
 
           <div className="input-group">
-            <label className="input-label">Your Secret Note JSON (Downloaded during Step 1)</label>
-            <textarea
-              className="input-text mono"
-              rows={5}
-              placeholder="Paste secret note JSON here..."
-              value={noteJsonInput}
-              onChange={(e) => setNoteJsonInput(e.target.value)}
-              style={{ fontSize: "12px" }}
+            <label className="input-label">Upload Your Secret Note JSON (Downloaded during Step 1)</label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json,application/json"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  processNoteFile(e.target.files[0]);
+                }
+              }}
             />
+
+            {!loadedFileInfo ? (
+              <div
+                className={`file-upload-box ${isDragging ? "drag-over" : ""}`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <div className="file-upload-icon">📁</div>
+                <div className="file-upload-title">Click to Browse or Drag & Drop Secret Note JSON</div>
+                <div className="file-upload-subtitle">
+                  Upload your <code>voting_secret_note_*.json</code> file to automatically extract cryptographic credentials
+                </div>
+              </div>
+            ) : (
+              <div className="file-loaded-card">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+                  <div>
+                    <div style={{ fontWeight: 600, color: "var(--accent-emerald)", display: "flex", alignItems: "center", gap: "8px", fontSize: "14px" }}>
+                      <span>📄</span> <span>{loadedFileInfo.name}</span>
+                    </div>
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "4px" }}>
+                      Student ID: <strong style={{ color: "var(--text-main)" }}>{loadedFileInfo.voterRollNumber}</strong> &nbsp;|&nbsp; 
+                      Commitment: <code className="mono">{loadedFileInfo.commitmentShort}</code>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: "11px", padding: "4px 12px" }}
+                    onClick={() => {
+                      setLoadedFileInfo(null);
+                      setParsedNote(null);
+                      setNoteJsonInput("");
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                  >
+                    Change File
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>

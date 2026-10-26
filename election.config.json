@@ -12,8 +12,8 @@
   ],
   "approvalThreshold": 2,
   "timing": {
-    "registrationDurationSeconds": 900,
-    "pauseBetweenRegistrationAndVotingSeconds": 10,
-    "votingDurationSeconds": 900
+    "registrationDurationSeconds": 300,
+    "pauseBetweenRegistrationAndVotingSeconds": 5,
+    "votingDurationSeconds": 300
   }
 }

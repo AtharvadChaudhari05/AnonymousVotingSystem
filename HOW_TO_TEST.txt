@@ -115,9 +115,9 @@ STEP 4: CAST YOUR ANONYMOUS VOTE
 1. Click on the "Voter View" tab.
 2. Click on sub-tab:
        [ 3. Anonymous Vote Casting ]
-3. The "Private Nullifier" and "Private Secret" fields will ALREADY BE FILLED 
-   automatically from your registration in Step 1!
-   (If blank, copy-paste the nullifier and secret from your downloaded backup note).
+3. Under "Upload Secret Note JSON", click the upload box or drag-and-drop the 
+   downloaded `voting_secret_note_0510.json` file.
+   The system will automatically parse and display your Student ID and Commitment leaf!
 4. Under "Select Your Candidate", click on one candidate card:
        Candidate 1: Alice Vance (Decentralized Innovation Party)
 5. Click the big green button:
